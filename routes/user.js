@@ -8,9 +8,9 @@ const SECRET = "baubaumiciomicio";
 async function user (fastify, options) {
 
     function sha256(content){
-        console.log(content);
-        return crypto.createHash('sha256').update(content).digest('base64');
+        return crypto.createHash('sha256').update(content).digest('base64');    //maybe hex better?
     }
+
 
     const registerOptions = {
         schema: {
@@ -44,6 +44,21 @@ async function user (fastify, options) {
         }
     }
 
+    const deleteOptions = {
+        schema: {
+            headers: {
+                type: 'object',
+                properties: {
+                   authorization : {type: 'string'},
+                },
+                required: ['authorization'],
+
+            },
+            response:{
+            }
+        }
+    }
+
 
     fastify.post('/register', registerOptions, async (request, reply) => {
 
@@ -61,8 +76,9 @@ async function user (fastify, options) {
             //hash the password
             let hash = sha256(request.body.password);
     
-            data.data.push({...request.body, password:hash, admin: false});
-            reply.send(data);   //TODO remove
+            data.data.push({...request.body, password:hash, userData: [], admin: false});
+            //reply.send(data);
+            
             //TODO avoid multiple accounts with the same username
     
             fs.writeFile(DATAFILE, JSON.stringify(data), 'utf-8', function(err){
@@ -71,8 +87,8 @@ async function user (fastify, options) {
             });
         }
 
-        catch{  //errors reading the file
-            reply.status(500).send("Error");
+        catch(error){  //errors reading the file
+            reply.status(500).send(error);
         }
 
     })
@@ -87,19 +103,22 @@ async function user (fastify, options) {
         try{
             let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
             let found = false;
-            let hash;
+            let hash, payload;
             let data = filedata.data;
 
             for (let i=0; i<data.length; i++){      //check if username exists in the filesystem
                 if(data[i].username == username){
                     found = true;
                     hash = data[i].password;
+                    payload = data[i];
+                    delete payload.userData;
+                    //console.log(payload);
                 };
             }
 
             if(found){  
                 if(sha256(password) == hash){   //check if password in the request corresponds to the same hash
-                    let token = jwt.sign(request.body, SECRET, {algorithm: 'HS256'});
+                    let token = jwt.sign(payload, SECRET, {algorithm: 'HS256'});
                     reply.send({token});
                 }
                 else{
@@ -112,8 +131,8 @@ async function user (fastify, options) {
             
             
         }
-        catch{
-            reply.status(500).send("Error");
+        catch(error){
+            reply.status(500).send(error);
         }
 
         
@@ -122,7 +141,54 @@ async function user (fastify, options) {
 
 
     fastify.delete('/delete', async (request, reply) => {
-        return { status: 'ok' }
+        
+        //$ curl -H 'authorization: Bearer <Token>'
+        let stop = false;
+        let headers = request.headers.authorization.split(" ");
+
+        if(headers[0] == "Bearer"){     //Is this check needed?
+            let token = headers[1];
+            
+            try{
+                
+                let decoded = jwt.verify(token, SECRET);
+
+                //remove account
+                try{
+                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                    let data = filedata.data;
+
+                    for(let i=0; i<data.length && !stop; i++){
+                        if(data[i].username == decoded.username){
+                            stop = true;
+                            data.splice(i,1);
+                        }
+                    }
+                    if(!stop){
+                        reply.send("No user found");
+                    }
+                    else{
+                        filedata = {data};
+
+                    fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                        if (err) throw err;
+                        console.log("Successfully written to file.");
+                    });
+
+                    reply.send("Account successfully removed");
+                    }
+                            
+                }
+                catch{
+                    reply.status(500).send("Error");
+                }
+            }
+            catch{
+                reply.status(403).send("Invalid token");
+            }
+        }
+
+
     })
 
 }
