@@ -21,7 +21,7 @@ async function user (fastify, options) {
                     password: {type: 'string'}
                 },
                 required: ['username', 'password'],
-
+                additionalProperties: false
             },
             response:{
             }
@@ -37,6 +37,7 @@ async function user (fastify, options) {
                     password: {type: 'string'}
                 },
                 required: ['username', 'password'],
+                additionalProperties: false
 
             },
             response:{
@@ -53,6 +54,13 @@ async function user (fastify, options) {
                 },
                 required: ['authorization'],
 
+            },
+            body:{
+                type: 'object',
+                properties:{
+                    username: {type: 'string'}
+                },
+                additionalProperties: false
             },
             response:{
             }
@@ -140,48 +148,56 @@ async function user (fastify, options) {
     })
 
 
-    fastify.delete('/delete', async (request, reply) => {
+    fastify.delete('/delete', deleteOptions, async (request, reply) => {
         
         //$ curl -H 'authorization: Bearer <Token>'
         let stop = false;
         let headers = request.headers.authorization.split(" ");
 
         if(headers[0] == "Bearer"){     //Is this check needed?
-            let token = headers[1];
-            
+            let token = headers[1]; 
             try{
-                
+                //check if token is ok
                 let decoded = jwt.verify(token, SECRET);
+                let userToDelete = request.body.username;
 
-                //remove account
-                try{
-                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
-                    let data = filedata.data;
+                //check if token corresponds to username OR ADMIN
+                if(decoded.username == userToDelete || decoded.admin == true){
+                    //remove account
+                    try{
+                        let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                        let data = filedata.data;
 
-                    for(let i=0; i<data.length && !stop; i++){
-                        if(data[i].username == decoded.username){
-                            stop = true;
-                            data.splice(i,1);
+                        for(let i=0; i<data.length && !stop; i++){
+                            if(data[i].username == userToDelete){
+                                stop = true;
+                                data.splice(i,1);
+                            }
                         }
-                    }
-                    if(!stop){
-                        reply.send("No user found");
-                    }
-                    else{
-                        filedata = {data};
+                        if(!stop){
+                            reply.send("No user found");
+                        }
+                        else{
+                            filedata = {data};
 
-                    fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
-                        if (err) throw err;
-                        console.log("Successfully written to file.");
-                    });
+                        fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                            if (err) throw err;
+                            console.log("Successfully written to file.");
+                        });
 
-                    reply.send("Account successfully removed");
+                        reply.send("Account successfully removed");
+                        }
+                                
                     }
-                            
+                    catch{
+                        reply.status(500).send("Error");
+                    }
                 }
-                catch{
-                    reply.status(500).send("Error");
+                else{
+                    reply.status(403).send("You don't have access to that account");
                 }
+
+                
             }
             catch{
                 reply.status(403).send("Invalid token");
