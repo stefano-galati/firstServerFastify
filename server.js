@@ -4,6 +4,8 @@ const fastify = require("fastify")({
 
 fastify.register(require('./routes/status.js'));
 fastify.register(require('./routes/user.js'));
+fastify.register(require('./routes/data.js'));
+
 
 fastify.get('/', function(req, reply){
     reply.send({

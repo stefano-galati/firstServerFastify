@@ -22,8 +22,6 @@ async function user (fastify, options) {
                 },
                 required: ['username', 'password'],
                 additionalProperties: false
-            },
-            response:{
             }
         }
     }
@@ -39,8 +37,6 @@ async function user (fastify, options) {
                 required: ['username', 'password'],
                 additionalProperties: false
 
-            },
-            response:{
             }
         }
     }
@@ -53,7 +49,6 @@ async function user (fastify, options) {
                    authorization : {type: 'string'},
                 },
                 required: ['authorization'],
-
             },
             body:{
                 type: 'object',
@@ -61,8 +56,6 @@ async function user (fastify, options) {
                     username: {type: 'string'}
                 },
                 additionalProperties: false
-            },
-            response:{
             }
         }
     }
