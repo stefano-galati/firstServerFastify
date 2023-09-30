@@ -201,6 +201,9 @@ async function user (fastify, options) {
                 reply.status(403).send(err);
             }
         }
+        else{
+            reply.send("No Bearer");
+        }
 
 
     })
