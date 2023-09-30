@@ -51,7 +51,7 @@ async function user (fastify, options) {
                 required: ['authorization'],
             },
             body:{
-                type: 'object',
+                type: ['object', 'null'],
                 properties:{
                     username: {type: 'string'}
                 },
@@ -84,8 +84,10 @@ async function user (fastify, options) {
     
             fs.writeFile(DATAFILE, JSON.stringify(data), 'utf-8', function(err){
                 if (err) throw err;
-                console.log("Successfully written to file.");
+
             });
+
+            reply.send("Account successfully registered");
         }
 
         catch(error){  //errors reading the file
@@ -152,7 +154,10 @@ async function user (fastify, options) {
             try{
                 //check if token is ok
                 let decoded = jwt.verify(token, SECRET);
-                let userToDelete = request.body.username;
+                //let userToDelete = request.body.username || decoded.username;
+                //console.log(request.hasOwnProperty('body'), request.body);
+
+                let userToDelete = request.body !== undefined ? request.body.username : decoded.username; 
 
                 //check if token corresponds to username OR ADMIN
                 if(decoded.username == userToDelete || decoded.admin == true){
@@ -192,8 +197,8 @@ async function user (fastify, options) {
 
                 
             }
-            catch{
-                reply.status(403).send("Invalid token");
+            catch(err){
+                reply.status(403).send(err);
             }
         }
 
