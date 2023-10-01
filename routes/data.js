@@ -1,16 +1,11 @@
 let fs = require('fs');
 let jwt = require('jsonwebtoken');
-let crypto = require('crypto');
 const { get } = require('http');
 
 const DATAFILE = "data.json";
 const SECRET = "baubaumiciomicio";
 
 async function data(fastify, options){
-
-    function sha256(content){
-        return crypto.createHash('sha256').update(content).digest('base64');    //maybe hex better?
-    }
 
     const postOptions = {
         schema: {
@@ -47,6 +42,26 @@ async function data(fastify, options){
     }
 
     const patchOptions = {
+        schema: {
+            headers: {
+                type: 'object',
+                properties: {
+                   authorization : {type: 'string'},
+                },
+                required: ['authorization']
+            },
+            body: {
+                type: ['object'],
+                properties: {
+                    username: {type: 'string'},
+                    newData: {type: 'string', contentEncoding: 'base64'}
+                },
+                additionalProperties: false
+            }
+        }
+    }
+
+    const deleteOptions = {
         schema: {
             headers: {
                 type: 'object',
@@ -163,7 +178,7 @@ async function data(fastify, options){
                 //check if token is ok
                 decoded = jwt.verify(token, SECRET);
             }
-            catch{
+            catch{  //---------------------------------------------------------------------------------------------
                 reply.send("Invalid token");
             }
 
@@ -174,8 +189,8 @@ async function data(fastify, options){
 
                 //index corresponding to username
                 let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                
                 let userData;
-
                 if(index >= 0){
                     //array of userData
                     userData = filedata.data[index].userData;
@@ -187,7 +202,7 @@ async function data(fastify, options){
                 let dataIndex = userData.reduce((acc, item, ind) => item.key == keyRequest ? ind : acc, -1);
 
                 if(dataIndex >= 0){
-                    console.log("ok", index, dataIndex);
+                    //console.log("ok", index, dataIndex);
                     reply.send(userData[dataIndex].data);
                 }
                 else{
@@ -196,7 +211,7 @@ async function data(fastify, options){
 
             }
             catch(err){
-                reply.status(500).send(err.message);
+                reply.status(404).send(err.message);
             }   
         }
         else{
@@ -206,19 +221,20 @@ async function data(fastify, options){
         reply.send(keyRequest);
     })
 
-    fastify.patch('/data/:key', getOptions, async (request, reply) => {
-        const keyRequest = request.params.key;
+    fastify.patch('/data/:key', patchOptions, async (request, reply) => {
 
         let headers = request.headers.authorization.split(" ");
-        let {key, data} = request.body;
+        let dataRequest= request.body.newData;
+        const keyRequest = request.params.key;
 
         if(headers[0] == "Bearer"){     //Is this check needed?
             let token = headers[1]; 
+            let decoded, userToModify;
+
             try{
                 //check if token is ok
-                let decoded = jwt.verify(token, SECRET);
-                
-                let userToModify;
+                decoded = jwt.verify(token, SECRET);
+
                 if(decoded.admin){
                     userToModify = request.body.hasOwnProperty('username') ? request.body.username : decoded.username;
                 }
@@ -228,30 +244,71 @@ async function data(fastify, options){
                             userToModify = decoded.username;
                         }
                         else{
-                            throw new Error (1);
+                            throw new Error ("You don't have access to that account");
                         }
                     }
                     else{   //no username in the body
                         userToModify = decoded.username;
                     }
                 }
-            }
-            catch{
+
+                //check if key is present
+                try{    //read the file
+                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+    
+                    //index corresponding to username
+                    let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                    
+                    let userData;
+                    if(index >= 0){
+                        //array of userData
+                        userData = filedata.data[index].userData;
+                    }
+                    else{
+                        throw new Error("User not registered");
+                    }
+    
+                    let dataIndex = userData.reduce((acc, item, ind) => item.key == keyRequest ? ind : acc, -1);
+    
+                    if(dataIndex >= 0){
+                        //modify the key/data pair
+                        filedata.data[index].userData[dataIndex].data = dataRequest;
+                        try{
+                            fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                                if (err) throw err;
+                            });
+                            reply.send("Data successfully modified!");
+                        }
+                        catch(err){
+                            reply.status(500).send(err);
+                        }
+                    }
+                    else{
+                        throw new Error("Key not present");
+                    }
+    
+                }
+                catch(err){
+                    reply.status(404).send(err.message);
+                }
 
             }
+            catch(err){
+                reply.status(403).send(err.message);
+            }
+            
         }
+
         else{
             reply.send("No Bearer");
         }
 
-        reply.send(keyRequest);
     })
 
-    fastify.delete('/data/:key', getOptions, async (request, reply) => {
+    fastify.delete('/data/:key', deleteOptions, async (request, reply) => {
         const keyRequest = request.params.key;
 
         let headers = request.headers.authorization.split(" ");
-        let {key, data} = request.body;
 
         if(headers[0] == "Bearer"){     //Is this check needed?
             let token = headers[1]; 
@@ -260,32 +317,71 @@ async function data(fastify, options){
                 let decoded = jwt.verify(token, SECRET);
                 
                 let userToModify;
-                if(decoded.admin){
-                    userToModify = request.body.hasOwnProperty('username') ? request.body.username : decoded.username;
-                }
-                else{
-                    if(request.body.hasOwnProperty('username')){    //if username in the body
-                        if(request.body.username == decoded.username){
-                            userToModify = decoded.username;
+                if(request.body !== undefined){
+                    if(request.body.hasOwnProperty('username')){
+                        if(decoded.admin){
+                            userToModify = request.body.username;
                         }
                         else{
-                            throw new Error (1);
+                            if(request.body.username == decoded.username){
+                                userToModify = decoded.username
+                            }
+                            else{
+                                throw new Error ("You don't have access to that account");
+                            }
                         }
                     }
-                    else{   //no username in the body
-                        userToModify = decoded.username;
+                }
+                else{
+                    userToModify = decoded.username;
+                }
+
+                //delete userData
+                try{
+                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+
+                    //index corresponding to username
+                    let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                    
+                    if(index >= 0){
+                        let userData = filedata.data[index].userData;
+                        let dataIndex = userData.reduce((acc, item, ind) => item.key == keyRequest ? ind : acc, -1);                       
+                        if(dataIndex >= 0){
+                            //remove element from the array
+                            filedata.data[index].userData.splice(dataIndex, 1);
+                            //write back to file
+                            try{
+                                fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                                    if (err) throw err;
+                                });
+                                reply.send("Data successfully deleted!");
+                            }
+                            catch(err){
+                                reply.status(500).send(err);
+                            }
+                        }
+                        else{
+                            reply.status(404).send("Key not found");
+                        }
+                        
+                    }
+                    else{
+                        reply.send(userToModify);
+                        //reply.status(404).send("User not found");
                     }
                 }
-            }
-            catch{
+                catch(err){
+                    reply.status(500).send(err);
+                }
 
+            }
+            catch(err){
+                reply.status(403).send(err.message);
             }
         }
         else{
             reply.send("No Bearer");
         }
-
-        reply.send(keyRequest);
     })
 
 }
