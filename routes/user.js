@@ -64,29 +64,37 @@ async function user (fastify, options) {
 
         try{
 
-            let data = fs.readFileSync(datafile, 'utf-8');
-            if(data == ""){ //empty file
+            let filedata = fs.readFileSync(datafile, 'utf-8');
+            if(filedata == ""){ //empty file
                 console.log("Empty");
-                data = {data:[]};   //array of {key: value}
+                filedata = {data:[]};   //array of {key: value}
             }
             else{
-                data = JSON.parse(data);
+                filedata = JSON.parse(filedata);
+            }
+
+            //check if username already registered
+            let index = filedata.data.reduce((acc, item, ind) => item.username == request.body.username ? ind : acc, -1);
+            if(index == -1){
+                //hash the password
+                let hash = sha256(request.body.password);
+    
+                filedata.data.push({...request.body, password:hash, userData: [], admin: false});
+                //reply.send(data);
+            
+                //TODO avoid multiple accounts with the same username
+    
+                fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
+                if (err) throw err;
+                });
+
+                reply.send("Account successfully registered");
+            }
+            else{
+                reply.send("Username already registered");
             }
     
-            //hash the password
-            let hash = sha256(request.body.password);
-    
-            data.data.push({...request.body, password:hash, userData: [], admin: false});
-            //reply.send(data);
             
-            //TODO avoid multiple accounts with the same username
-    
-            fs.writeFile(datafile, JSON.stringify(data), 'utf-8', function(err){
-                if (err) throw err;
-
-            });
-
-            reply.send("Account successfully registered");
         }
 
         catch(error){  //errors reading the file
