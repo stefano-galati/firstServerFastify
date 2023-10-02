@@ -115,16 +115,15 @@ async function data(fastify, options){
                     //check if key is already present
 
                     //index corresponding to username
-                    let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                    let index = filedata.users.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
                     let userData;
                     //array of userData
                     if(index >= 0){
-                        userData = filedata.data[index].userData;
+                        userData = filedata.users[index].userData;
                     }
                     else{
                         throw new Error("User not registered");
                     }
-                    //console.log("-------------------\n\n",userData.filter(item => item.key == key));
                     
                     if(userData.filter(item => item.key == key).length == 0){  //if the array of items with the chosen key is empty
                         console.log("BauBau");
@@ -132,7 +131,7 @@ async function data(fastify, options){
                         userData.push({key, data});
                         console.log("------aaaaa-------\n\n", index);
 
-                        filedata.data[index].userData = userData;   //update userData
+                        filedata.users[index].userData = userData;   //update userData
 
                         //update file
                         fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
@@ -187,12 +186,12 @@ async function data(fastify, options){
                 let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
 
                 //index corresponding to username
-                let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                let index = filedata.users.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
                 
                 let userData;
                 if(index >= 0){
                     //array of userData
-                    userData = filedata.data[index].userData;
+                    userData = filedata.users[index].userData;
                 }
                 else{
                     throw new Error("User not registered");
@@ -201,7 +200,6 @@ async function data(fastify, options){
                 let dataIndex = userData.reduce((acc, item, ind) => item.key == keyRequest ? ind : acc, -1);
 
                 if(dataIndex >= 0){
-                    //console.log("ok", index, dataIndex);
                     reply.send(userData[dataIndex].data);
                 }
                 else{
@@ -256,12 +254,12 @@ async function data(fastify, options){
                     let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
     
                     //index corresponding to username
-                    let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                    let index = filedata.users.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
                     
                     let userData;
                     if(index >= 0){
                         //array of userData
-                        userData = filedata.data[index].userData;
+                        userData = filedata.users[index].userData;
                     }
                     else{
                         throw new Error("User not registered");
@@ -271,7 +269,7 @@ async function data(fastify, options){
     
                     if(dataIndex >= 0){
                         //modify the key/data pair
-                        filedata.data[index].userData[dataIndex].data = dataRequest;
+                        filedata.users[index].userData[dataIndex].data = dataRequest;
                         try{
                             fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
                                 if (err) throw err;
@@ -335,19 +333,19 @@ async function data(fastify, options){
                     userToModify = decoded.username;
                 }
 
-                //delete userData
+                //delete
                 try{
                     let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
 
                     //index corresponding to username
-                    let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
+                    let index = filedata.users.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
                     
                     if(index >= 0){
-                        let userData = filedata.data[index].userData;
+                        let userData = filedata.users[index].userData;
                         let dataIndex = userData.reduce((acc, item, ind) => item.key == keyRequest ? ind : acc, -1);                       
                         if(dataIndex >= 0){
                             //remove element from the array
-                            filedata.data[index].userData.splice(dataIndex, 1);
+                            filedata.users[index].userData.splice(dataIndex, 1);
                             //write back to file
                             try{
                                 fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
@@ -365,8 +363,8 @@ async function data(fastify, options){
                         
                     }
                     else{
-                        reply.send(userToModify);
-                        //reply.status(404).send("User not found");
+                        //reply.send(userToModify);
+                        reply.status(404).send("User not found");
                     }
                 }
                 catch(err){
