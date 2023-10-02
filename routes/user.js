@@ -1,9 +1,8 @@
+const { datafile, secret } = require('../server');
+
 let fs = require('fs');
 let jwt = require('jsonwebtoken');
 let crypto = require('crypto');
-
-const DATAFILE = "data.json";
-const SECRET = "baubaumiciomicio";
 
 async function user (fastify, options) {
 
@@ -65,7 +64,7 @@ async function user (fastify, options) {
 
         try{
 
-            let data = fs.readFileSync(DATAFILE, 'utf-8');
+            let data = fs.readFileSync(datafile, 'utf-8');
             if(data == ""){ //empty file
                 console.log("Empty");
                 data = {data:[]};   //array of {key: value}
@@ -82,7 +81,7 @@ async function user (fastify, options) {
             
             //TODO avoid multiple accounts with the same username
     
-            fs.writeFile(DATAFILE, JSON.stringify(data), 'utf-8', function(err){
+            fs.writeFile(datafile, JSON.stringify(data), 'utf-8', function(err){
                 if (err) throw err;
 
             });
@@ -104,7 +103,7 @@ async function user (fastify, options) {
 
 
         try{
-            let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+            let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
             let found = false;
             let hash, payload;
             let data = filedata.data;
@@ -121,7 +120,7 @@ async function user (fastify, options) {
 
             if(found){  
                 if(sha256(password) == hash){   //check if password in the request corresponds to the same hash
-                    let token = jwt.sign(payload, SECRET, {algorithm: 'HS256'});
+                    let token = jwt.sign(payload, secret, {algorithm: 'HS256'});
                     reply.send({token});
                 }
                 else{
@@ -153,7 +152,7 @@ async function user (fastify, options) {
             let token = headers[1]; 
             try{
                 //check if token is ok
-                let decoded = jwt.verify(token, SECRET);
+                let decoded = jwt.verify(token, secret);
                 //let userToDelete = request.body.username || decoded.username;
                 //console.log(request.hasOwnProperty('body'), request.body);
 
@@ -163,7 +162,7 @@ async function user (fastify, options) {
                 if(decoded.username == userToDelete || decoded.admin == true){
                     //remove account
                     try{
-                        let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                        let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
                         let data = filedata.data;
 
                         for(let i=0; i<data.length && !stop; i++){
@@ -178,7 +177,7 @@ async function user (fastify, options) {
                         else{
                             filedata = {data};
 
-                        fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                        fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
                             if (err) throw err;
                             console.log("Successfully written to file.");
                         });

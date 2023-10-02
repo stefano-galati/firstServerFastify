@@ -1,3 +1,7 @@
+const datafile = "data.json", secret = "codicesegreto";
+
+module.exports = {datafile, secret};
+
 const fastify = require("fastify")({
     logger: true
 });

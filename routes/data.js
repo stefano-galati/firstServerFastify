@@ -1,9 +1,8 @@
+const { datafile, secret } = require('../server');
+
 let fs = require('fs');
 let jwt = require('jsonwebtoken');
 const { get } = require('http');
-
-const DATAFILE = "data.json";
-const SECRET = "baubaumiciomicio";
 
 async function data(fastify, options){
 
@@ -88,7 +87,7 @@ async function data(fastify, options){
             let token = headers[1]; 
             try{
                 //check if token is ok
-                let decoded = jwt.verify(token, SECRET);
+                let decoded = jwt.verify(token, secret);
                 
                 let userToModify;
                 
@@ -111,7 +110,7 @@ async function data(fastify, options){
                 
 
                 try{
-                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                    let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
 
                     //check if key is already present
 
@@ -136,7 +135,7 @@ async function data(fastify, options){
                         filedata.data[index].userData = userData;   //update userData
 
                         //update file
-                        fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                        fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
                             if (err) throw err;
                             console.log("Successfully written to file.");
                         });
@@ -176,7 +175,7 @@ async function data(fastify, options){
 
             try{
                 //check if token is ok
-                decoded = jwt.verify(token, SECRET);
+                decoded = jwt.verify(token, secret);
             }
             catch{  //---------------------------------------------------------------------------------------------
                 reply.send("Invalid token");
@@ -185,7 +184,7 @@ async function data(fastify, options){
             let userToModify = decoded.username;
 
             try{    //read the file
-                let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
 
                 //index corresponding to username
                 let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
@@ -233,7 +232,7 @@ async function data(fastify, options){
 
             try{
                 //check if token is ok
-                decoded = jwt.verify(token, SECRET);
+                decoded = jwt.verify(token, secret);
 
                 if(decoded.admin){
                     userToModify = request.body.hasOwnProperty('username') ? request.body.username : decoded.username;
@@ -254,7 +253,7 @@ async function data(fastify, options){
 
                 //check if key is present
                 try{    //read the file
-                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                    let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
     
                     //index corresponding to username
                     let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
@@ -274,7 +273,7 @@ async function data(fastify, options){
                         //modify the key/data pair
                         filedata.data[index].userData[dataIndex].data = dataRequest;
                         try{
-                            fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                            fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
                                 if (err) throw err;
                             });
                             reply.send("Data successfully modified!");
@@ -314,7 +313,7 @@ async function data(fastify, options){
             let token = headers[1]; 
             try{
                 //check if token is ok
-                let decoded = jwt.verify(token, SECRET);
+                let decoded = jwt.verify(token, secret);
                 
                 let userToModify;
                 if(request.body !== undefined){
@@ -338,7 +337,7 @@ async function data(fastify, options){
 
                 //delete userData
                 try{
-                    let filedata = JSON.parse(fs.readFileSync(DATAFILE, 'utf-8'));
+                    let filedata = JSON.parse(fs.readFileSync(datafile, 'utf-8'));
 
                     //index corresponding to username
                     let index = filedata.data.reduce((acc, item, ind) => item.username == userToModify ? ind : acc, -1);
@@ -351,7 +350,7 @@ async function data(fastify, options){
                             filedata.data[index].userData.splice(dataIndex, 1);
                             //write back to file
                             try{
-                                fs.writeFile(DATAFILE, JSON.stringify(filedata), 'utf-8', function(err){
+                                fs.writeFile(datafile, JSON.stringify(filedata), 'utf-8', function(err){
                                     if (err) throw err;
                                 });
                                 reply.send("Data successfully deleted!");
